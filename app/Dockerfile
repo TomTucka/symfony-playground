@@ -1,0 +1,12 @@
+FROM composer AS composer
+COPY composer.json /app
+COPY composer.lock /app
+
+RUN composer install
+
+FROM php:7-fpm-alpine
+
+WORKDIR /var/www
+
+COPY ./ /app
+COPY --from=composer /app/vendor /app/vendor
