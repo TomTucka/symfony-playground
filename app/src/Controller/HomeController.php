@@ -45,9 +45,15 @@ class HomeController extends AbstractController
     public function pdfText()
     {
         $parser = new Parser();
-        $pdf    = $parser->parseFile('/app/1339247T COLDWINE B (19.2.19) Joint and several.pdf');
-        $text = $pdf->getText();
+        
+        //THIS WORKS 
+        $pdf    = $parser->parseFile('/app/pdf/mockSoleNewUnder21.pdf');
 
+        //$pdf = $parser->parseFile('/app/pdf/mockSoleReplacementOver21.pdf');
+        //$pdf = $parser->parseFile('/app/pdf/mockSoleReplacementUnder21.pdf');
+        
+        $text = $pdf->getText();
+        //die($text);
         $appointment = $this->getAppointmentType($text);
         $subtype = $this->getSubtype($text);
         $bond = $this->getBondLevel($text);
@@ -59,32 +65,31 @@ class HomeController extends AbstractController
     }
 
     private function getAppointmentType($orderText) {
-        $expression = "/ORDER APPOINTING (?:A )?(?:NEW )?(JOINT AND SEVERAL |JOINT )?(?:DEPUTIES|DEPUTY)?/";
+        $expression = "/ORDER\s*APPOINTING\s*(?:A|AN|)\s*(NEW|INTERIM|)\s*(?:JOINT\s*AND\s*SEVERAL|JOINT|)\s*(?:DEPUTIES|DEPUTY)/m";
         preg_match($expression, $orderText, $matches, PREG_UNMATCHED_AS_NULL);
 
-        switch ($matches) {
-            case (sizeof($matches) == 1):
+        switch ($matches[2]) {
+            case null:
                 return 'SOLE';
-            case $matches[1] == 'JOINT AND SEVERAL ':
+            case 'JOINT AND SEVERAL':
                 return 'JOINT AND SEVERAL';
-            case $matches[1] == 'JOINT ':
+            case 'JOINT':
                 return 'JOINT';
             default:
                 return 'NO MATCHES FOUND';
         }
-
     }
 
     private function getSubtype($orderText) {
-        $expression = "/ORDER APPOINTING (?:A |AN )?(NEW )?(INTERIM )?(?:JOINT AND SEVERAL |JOINT )?(?:DEPUTIES|DEPUTY)?/";
+        $expression = "/ORDER\s*APPOINTING\s*(?:A|AN|)\s*(NEW|INTERIM|)\s*(?:JOINT\s*AND\s*SEVERAL|JOINT|)\s*(?:DEPUTIES|DEPUTY)/m";
         preg_match($expression, $orderText, $matches, PREG_UNMATCHED_AS_NULL);
 
-        switch ($matches) {
-            case (sizeof($matches) == 1):
+        switch ($matches[1]) {
+            case null:
                 return 'NEW ORDER';
-            case $matches[1] == 'NEW ':
+            case 'NEW':
                 return 'REPLACEMENT ORDER';
-            case $matches[1] == 'INTERIM ':
+            case 'INTERIM':
                 return 'INTERIM ORDER';
             default:
                 return 'NO MATCHES FOUND';
@@ -92,12 +97,12 @@ class HomeController extends AbstractController
     }
 
     private function getBondLevel($orderText){
-        $expression = "/sum of (.*) in /";
-        preg_match($expression, $orderText, $matches, PREG_UNMATCHED_AS_NULL);
-
-        $bond = intval(preg_replace("/[^a-zA-Z0-9]/", "", $matches[1]));
+        preg_match("/sum of (.*) in/", $orderText, $matches, PREG_UNMATCHED_AS_NULL);
+        
+        $bond = preg_replace("/[^a-zA-Z0-9]/", "", $matches[1]);
+        
         switch ($bond) {
-            case ($bond > 21000):
+            case ($bond >= 21000):
                 return 'Bond is > 21,000';
             case ($bond < 21000):
                 return 'Bond is < 21,000';
